@@ -32,9 +32,10 @@ def get_producthunt_products():
     """
 
     headers = {
-        "Authorization": f"Bearer {PH_API_TOKEN}",
-        "Content-Type": "application/json"
-    }
+    "Authorization": f"Bearer {PH_API_TOKEN}",
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (compatible; ChatGPTNotifier/1.0)"
+}
 
     response = requests.post(
         "https://api.producthunt.com/v2/api/graphql",
