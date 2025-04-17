@@ -2,7 +2,7 @@ name: Send Product Hunt Summary to LINE
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 毎日9:00 JST（UTC 0:00）
+    - cron: '0 0 * * *'  # 毎日9:00 JST
   workflow_dispatch:
 
 jobs:
@@ -10,12 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+
       - name: Install dependencies
-        run: pip install openai requests
+        run: pip install openai requests  # 👈 ここが依存ライブラリ指定！
+
       - name: Run script
         run: python main.py
         env:
