@@ -13,7 +13,8 @@ LINE_USER_ID = os.getenv("LINE_USER_ID")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # 📅 今日のUTC日付
-today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+# today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+today = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
 # 🟠 Product HuntのGraphQLから今日のプロダクトを取得
 def get_producthunt_products():
