@@ -1,48 +1,91 @@
 from openai import OpenAI
 import requests
 import os
+import datetime
 
-# 環境変数から各種トークンを取得
+# 🔐 Secretsからトークン取得
+PH_API_TOKEN = os.getenv("PH_API_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_TOKEN = os.getenv("LINE_TOKEN")
 LINE_USER_ID = os.getenv("LINE_USER_ID")
 
-# OpenAIクライアント初期化
+# 🧠 OpenAI初期化
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ChatGPTに要約を依頼
-def fetch_summary():
+# 📅 今日のUTC日付
+today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+
+# 🟠 Product HuntのGraphQLから今日のプロダクトを取得
+def get_producthunt_products():
+    query = f"""
+    {{
+      posts(first: 5, order: VOTES, postedAfter: "{today}") {{
+        edges {{
+          node {{
+            name
+            tagline
+            url
+          }}
+        }}
+      }}
+    }}
+    """
+
+    headers = {
+        "Authorization": f"Bearer {PH_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(
+        "https://api.producthunt.com/v2/api/graphql",
+        json={"query": query},
+        headers=headers
+    )
+
+    edges = response.json()["data"]["posts"]["edges"]
+    product_texts = []
+
+    for p in edges:
+        node = p["node"]
+        product_texts.append(f"{node['name']} - {node['tagline']} ({node['url']})")
+
+    return "\n".join(product_texts)
+
+# 💬 ChatGPTに日本語要約を依頼
+def summarize_with_chatgpt(product_text):
+    prompt = (
+        "以下はProduct Huntで本日注目されたプロダクト一覧です。\n"
+        "各プロダクトを日本語で簡潔にまとめてください：\n\n" + product_text
+    )
+
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
-        messages=[{
-            "role": "user",
-            "content": "product hunt のTop Products Launching Todayの各プロダクトの概要をまとめて教えてください。\nhttps://www.producthunt.com/"
-        }],
+        messages=[{"role": "user", "content": prompt}],
         temperature=0.7
     )
+
     return response.choices[0].message.content
 
-# LINEへ通知
+# 📱 LINEに通知
 def send_to_line(message):
-    url = "https://api.line.me/v2/bot/message/push"
     headers = {
         "Authorization": f"Bearer {LINE_TOKEN}",
         "Content-Type": "application/json"
     }
 
-    # LINEは最大5000文字（安全のため4900文字まで）
     payload = {
         "to": LINE_USER_ID,
         "messages": [{"type": "text", "text": message[:4900]}]
     }
 
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload)
     print("LINE送信結果:", response.status_code, response.text)
 
-# 実行処理
+# 🧩 メイン処理
 if __name__ == "__main__":
     try:
-        summary = fetch_summary()
+        products = get_producthunt_products()
+        summary = summarize_with_chatgpt(products)
         send_to_line(summary)
     except Exception as e:
         print("エラー:", e)
